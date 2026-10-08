@@ -21,7 +21,9 @@ public class AnalyticsController {
         this.analyticsService = analyticsService;
     }
 
-    @GetMapping("/{symbol}/{timeframe}")
+
+
+    @GetMapping(value = "/{symbol}/{timeframe}", produces = "application/json;charset=UTF-8")
     @Operation(summary = "Анализ валютной пары",
     description = "Возвращает RSI, текущую цену и торговый сигнал для указанной пары и таймфрейма")
     public Map<String, Object> getAnalytics(
