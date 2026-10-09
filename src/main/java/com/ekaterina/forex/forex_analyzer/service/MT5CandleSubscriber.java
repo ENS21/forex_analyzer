@@ -42,7 +42,7 @@ public class MT5CandleSubscriber {
         try (ZContext context = new ZContext()) {
             ZMQ.Socket subscriber = context.createSocket(SocketType.SUB);
             subscriber.connect("tcp://localhost:5555");
-            subscriber.subscribe("candle.EURUSD".getBytes());
+            subscriber.subscribe("candle".getBytes());
             log.info("Подписался на свечи MT5 (candle.EURUSD)");
 
             while (!Thread.currentThread().isInterrupted()) {

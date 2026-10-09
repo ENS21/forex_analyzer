@@ -24,7 +24,7 @@ public class MT5TickSubscriber {
         try (ZContext context = new ZContext()) {
             ZMQ.Socket subscriber = context.createSocket(SocketType.SUB);
             subscriber.connect("tcp://localhost:5555");
-            subscriber.subscribe("tick.EURUSD".getBytes());
+            subscriber.subscribe("tick".getBytes());
             log.info("Подключился к MT5 ZeroMQ на порту 5555");
 
             while (!Thread.currentThread().isInterrupted()) {

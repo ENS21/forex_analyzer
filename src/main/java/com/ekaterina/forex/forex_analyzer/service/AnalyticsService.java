@@ -16,6 +16,7 @@ import java.time.ZonedDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Collections;
 
 @Service
 public class AnalyticsService {
@@ -27,8 +28,10 @@ public class AnalyticsService {
      * Считает RSI по свечам из базы данных.
      */
     public Map<String, Object> getRsiAnalysis(String symbol, String timeframe) {
+        // Для RSI достаточно 100 последних свечей (14 для расчёта + запас)
         List<Candle> candles = candleRepository
-                .findBySymbolAndTimeframeOrderByOpenTimeAsc(symbol, timeframe);
+                .findTop100BySymbolAndTimeframeOrderByOpenTimeDesc(symbol, timeframe);
+        Collections.reverse(candles);  // развернуть: старые → новые
 
         if (candles.size() < 15) {
             Map<String, Object> error = new HashMap<>();
@@ -53,7 +56,6 @@ public class AnalyticsService {
                     candle.getClose().doubleValue(),
                     candle.getVolume().doubleValue()
             ));
-
         }
 
         RSIIndicator rsi = new RSIIndicator(new ClosePriceIndicator(series), 14);
