@@ -11,26 +11,19 @@ import org.springframework.stereotype.Component;
 import org.zeromq.SocketType;
 import org.zeromq.ZContext;
 import org.zeromq.ZMQ;
-
 import java.math.BigDecimal;
-import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.Optional;
 import java.time.ZoneOffset;
 
 @Component
 public class MT5CandleSubscriber {
-
     private static final Logger log = LoggerFactory.getLogger(MT5CandleSubscriber.class);
     private static final ObjectMapper mapper = new ObjectMapper();
-
     private final CandleRepository candleRepository;
-
     public MT5CandleSubscriber(CandleRepository candleRepository) {
         this.candleRepository = candleRepository;
     }
-
     @PostConstruct
     public void start() {
         Thread thread = new Thread(this::listen, "mt5-candle-subscriber");
@@ -43,7 +36,7 @@ public class MT5CandleSubscriber {
             ZMQ.Socket subscriber = context.createSocket(SocketType.SUB);
             subscriber.connect("tcp://localhost:5555");
             subscriber.subscribe("candle".getBytes());
-            log.info("Подписался на свечи MT5 (candle.EURUSD)");
+            log.info("Подключился к MT5 ZeroMQ на порту 5555");
 
             while (!Thread.currentThread().isInterrupted()) {
                 String message = subscriber.recvStr();

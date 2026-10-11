@@ -1,12 +1,18 @@
 package com.ekaterina.forex.forex_analyzer.entity;
-
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import lombok.*;
 
 @Entity
 @Table (name = "candles", indexes = {
         @Index(name = "idx_symbol_timeframe_time", columnList = "symbol,timeframe,open_time")})
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+@ToString
 public class Candle {
     @Id
     @GeneratedValue (strategy = GenerationType.IDENTITY)
@@ -35,33 +41,4 @@ public class Candle {
 
     @Column(precision = 18, scale = 8)
     private BigDecimal volume;
-
-    public Candle() {}
-
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-
-    public String getSymbol() { return symbol; }
-    public void setSymbol(String symbol) { this.symbol = symbol; }
-
-    public String getTimeframe() { return timeframe; }
-    public void setTimeframe(String timeframe) { this.timeframe = timeframe; }
-
-    public LocalDateTime getOpenTime() { return openTime; }
-    public void setOpenTime(LocalDateTime openTime) { this.openTime = openTime; }
-
-    public BigDecimal getOpen() { return open; }
-    public void setOpen(BigDecimal open) { this.open = open; }
-
-    public BigDecimal getHigh() { return high; }
-    public void setHigh(BigDecimal high) { this.high = high; }
-
-    public BigDecimal getLow() { return low; }
-    public void setLow(BigDecimal low) { this.low = low; }
-
-    public BigDecimal getClose() { return close; }
-    public void setClose(BigDecimal close) { this.close = close; }
-
-    public BigDecimal getVolume() { return volume; }
-    public void setVolume(BigDecimal volume) { this.volume = volume; }
 }
