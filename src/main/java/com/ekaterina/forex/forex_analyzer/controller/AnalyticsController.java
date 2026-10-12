@@ -14,14 +14,18 @@ import java.util.Map;
 @RequestMapping("/api/analytics")
 @Tag(name = "Analytics", description = "Аналитика валютных пар: RSI, сигналы перекупленности/перепроданности")
 public class AnalyticsController {
-
     private final AnalyticsService analyticsService;
+
+    @GetMapping(value = "/levels/{symbol}/{timeframe}", produces = "application/json;charset=UTF-8")
+    public Map<String, Object> getLevels(
+            @PathVariable String symbol,
+            @PathVariable String timeframe) {
+        return analyticsService.findLevels(symbol, timeframe);
+    }
 
     public AnalyticsController(AnalyticsService analyticsService) {
         this.analyticsService = analyticsService;
     }
-
-
 
     @GetMapping(value = "/{symbol}/{timeframe}", produces = "application/json;charset=UTF-8")
     @Operation(summary = "Анализ валютной пары",

@@ -17,6 +17,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Collections;
+import java.util.ArrayList;
 
 @Service
 public class AnalyticsService {
@@ -79,6 +80,102 @@ public class AnalyticsService {
                 rsiValue > 70 ? "ПЕРЕКУПЛЕНА"
                         : rsiValue < 30 ? "ПЕРЕПРОДАНА"
                         : "НЕЙТРАЛЬНО");
+        return result;
+    }
+    public Map<String, Object> findLevels(String symbol, String timeframe) {
+        // 1. Берём последние 200 свечей
+        List<Candle> candles = candleRepository
+                .findTop100BySymbolAndTimeframeOrderByOpenTimeDesc(symbol, timeframe);
+        Collections.reverse(candles);
+
+        if (candles.size() < 20) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Недостаточно свечей для анализа уровней");
+            error.put("count", candles.size());
+            return error;
+        }
+
+        // 2. Ищем локальные max/min
+        // Свеча — локальный максимум, если её high больше, чем у 3 соседей справа и слева
+        // 2. Ищем локальные max/min
+        // 2. Ищем локальные max/min (без типа — тип определим позже, по текущей цене)
+        int lookback = 3;
+        List<Double> rawPrices = new ArrayList<>();
+        List<String> rawTimes = new ArrayList<>();
+
+        for (int i = lookback; i < candles.size() - lookback; i++) {
+            Candle c = candles.get(i);
+
+            boolean isLocalMax = true;
+            boolean isLocalMin = true;
+
+            for (int j = 1; j <= lookback; j++) {
+                if (candles.get(i - j).getHigh().doubleValue() >= c.getHigh().doubleValue()
+                        || candles.get(i + j).getHigh().doubleValue() >= c.getHigh().doubleValue()) {
+                    isLocalMax = false;
+                }
+                if (candles.get(i - j).getLow().doubleValue() <= c.getLow().doubleValue()
+                        || candles.get(i + j).getLow().doubleValue() <= c.getLow().doubleValue()) {
+                    isLocalMin = false;
+                }
+            }
+
+            if (isLocalMax) {
+                rawPrices.add(c.getHigh().doubleValue());
+                rawTimes.add(c.getOpenTime().toString());
+            }
+            if (isLocalMin) {
+                rawPrices.add(c.getLow().doubleValue());
+                rawTimes.add(c.getOpenTime().toString());
+            }
+        }
+
+        // 3. Группируем близкие уровни (в пределах 0.15%)
+        // 3. Группируем близкие уровни (в пределах 0.15%)
+        double tolerance = 0.0015;
+        List<Double> mergedPrices = new ArrayList<>();
+        List<String> mergedTimes = new ArrayList<>();
+
+        for (int k = 0; k < rawPrices.size(); k++) {
+            double price = rawPrices.get(k);
+            boolean found = false;
+            for (double existing : mergedPrices) {
+                if (Math.abs(existing - price) / existing < tolerance) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                mergedPrices.add(price);
+                mergedTimes.add(rawTimes.get(k));
+            }
+        }
+        // 4. Текущая цена — она определит тип уровней
+        Double livePriceObj = tickCache.getCurrentPrice(symbol);
+        double livePrice = livePriceObj != null
+                ? livePriceObj
+                : candles.get(candles.size() - 1).getClose().doubleValue();
+
+// 5. Создаём LevelDto с правильным типом
+        List<LevelDto> levels = new ArrayList<>();
+        for (int k = 0; k < mergedPrices.size(); k++) {
+            double price = mergedPrices.get(k);
+            String type = price > livePrice ? "RESISTANCE" : "SUPPORT";
+            levels.add(new LevelDto(type, price, mergedTimes.get(k)));
+        }
+
+// 6. Сортируем по цене (от высоких к низким)
+        levels.sort((a, b) -> Double.compare(b.getPrice(), a.getPrice()));
+
+// 7. Формируем ответ
+        Map<String, Object> result = new HashMap<>();
+        result.put("pair", symbol);
+        result.put("timeframe", timeframe);
+        result.put("candlesAnalyzed", candles.size());
+        result.put("currentPrice", livePrice);
+        result.put("levelsCount", levels.size());
+        result.put("levels", levels);
+
         return result;
     }
 }
