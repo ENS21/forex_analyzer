@@ -1,5 +1,7 @@
 package com.ekaterina.forex.forex_analyzer.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,8 +12,13 @@ import org.zeromq.ZMQ;
 
 @Component
 public class MT5TickSubscriber {
-
     private static final Logger log = LoggerFactory.getLogger(MT5TickSubscriber.class);
+    private static final ObjectMapper mapper = new ObjectMapper();
+    private final TickCache tickCache;
+
+    public MT5TickSubscriber(TickCache tickCache) {
+        this.tickCache = tickCache;
+    }
 
     @PostConstruct
     public void start() {
@@ -30,9 +37,26 @@ public class MT5TickSubscriber {
             while (!Thread.currentThread().isInterrupted()) {
                 String message = subscriber.recvStr();
                 if (message != null) {
-                    log.info("Тик от MT5: {}", message);
+                    processMessage(message);
                 }
             }
+        }
+    }
+
+    private void processMessage(String message) {
+        try {
+            int spaceIdx = message.indexOf(' ');
+            if (spaceIdx < 0) return;
+            String json = message.substring(spaceIdx + 1);
+            JsonNode node = mapper.readTree(json);
+            String symbol = node.get("symbol").asText();
+            double bid = node.get("bid").asDouble();
+            double ask = node.get("ask").asDouble();
+            long timeUnix = node.get("time").asLong();
+            tickCache.update(symbol, bid, ask, timeUnix);
+            log.info("Тик от MT5: {}", message);
+        } catch (Exception e) {
+            log.error("Ошибка обработки тика: {}", message, e);
         }
     }
 }

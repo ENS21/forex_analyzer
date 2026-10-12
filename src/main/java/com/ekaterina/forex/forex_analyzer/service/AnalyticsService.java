@@ -20,8 +20,10 @@ import java.util.Collections;
 
 @Service
 public class AnalyticsService {
+    private final TickCache tickCache;
     private final CandleRepository candleRepository;
-    public AnalyticsService(CandleRepository candleRepository) {
+    public AnalyticsService(CandleRepository candleRepository, TickCache tickCache) {
+        this.tickCache = tickCache;
         this.candleRepository = candleRepository;
     }
     /**
@@ -37,6 +39,7 @@ public class AnalyticsService {
             Map<String, Object> error = new HashMap<>();
             error.put("error", "Недостаточно свечей для расчёта RSI (нужно минимум 15)");
             error.put("count", candles.size());
+
             return error;
         }
 
@@ -68,7 +71,9 @@ public class AnalyticsService {
         result.put("timeframe", timeframe);
         result.put("candlesCount", candles.size());
         result.put("lastCandleTime", lastCandle.getOpenTime().toString());
-        result.put("currentPrice", lastCandle.getClose());
+        Double livePrice = tickCache.getCurrentPrice(symbol);
+        result.put("currentPrice", livePrice != null ? livePrice : lastCandle.getClose());
+        //result.put("currentPrice", lastCandle.getClose());
         result.put("rsi", Math.round(rsiValue * 100.0) / 100.0);
         result.put("signal",
                 rsiValue > 70 ? "ПЕРЕКУПЛЕНА"
