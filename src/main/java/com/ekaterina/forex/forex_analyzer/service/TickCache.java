@@ -3,7 +3,6 @@ package com.ekaterina.forex.forex_analyzer.service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
-
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -13,12 +12,10 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 public class TickCache {
-
     private static final Logger log = LoggerFactory.getLogger(TickCache.class);
-
-    // Часовой пояс сервера брокера (Альфа-Форекс — GMT+3 обычно)
+    // Часовой пояс сервера брокера
     private static final ZoneId BROKER_ZONE = ZoneOffset.ofHours(3);
-
+    // ===== Вложенный класс: последний тик =====
     public static class Tick {
         private final double bid;
         private final double ask;
@@ -35,27 +32,40 @@ public class TickCache {
         public long getTime() { return time; }
     }
 
+    // ===== Вложенный класс: открытие дня =====
     public static class DailyOpen {
         private final double price;
         private final LocalDate date;
+        private double high;
+        private double low;
 
         public DailyOpen(double price, LocalDate date) {
             this.price = price;
             this.date = date;
+            this.high = price;
+            this.low = price;
         }
 
         public double getPrice() { return price; }
         public LocalDate getDate() { return date; }
+        public double getHigh() { return high; }
+        public double getLow() { return low; }
+
+        public void updateExtremes(double bid) {
+            if (bid > high) high = bid;
+            if (bid < low) low = bid;
+        }
     }
 
+    // ===== Поля главного класса =====
     private final Map<String, Tick> lastTicks = new ConcurrentHashMap<>();
     private final Map<String, DailyOpen> dailyOpens = new ConcurrentHashMap<>();
 
+    // ===== Методы главного класса =====
+
     public void update(String symbol, double bid, double ask, long timeUnix) {
-        // 1. Обновляем последний тик
         lastTicks.put(symbol, new Tick(bid, ask, timeUnix));
 
-        // 2. Проверяем, не новый ли это день
         LocalDate tickDate = Instant.ofEpochSecond(timeUnix)
                 .atZone(BROKER_ZONE)
                 .toLocalDate();
@@ -64,6 +74,8 @@ public class TickCache {
         if (existing == null || !existing.getDate().equals(tickDate)) {
             dailyOpens.put(symbol, new DailyOpen(bid, tickDate));
             log.info("Открытие дня для {} = {} (дата {})", symbol, bid, tickDate);
+        } else {
+            existing.updateExtremes(bid);
         }
     }
 
@@ -79,5 +91,16 @@ public class TickCache {
     public Double getOpenPrice(String symbol) {
         DailyOpen dailyOpen = dailyOpens.get(symbol);
         return dailyOpen != null ? dailyOpen.getPrice() : null;
+    }
+
+    // ← вот эти два метода добавляем в главный класс
+    public Double getDayHigh(String symbol) {
+        DailyOpen dailyOpen = dailyOpens.get(symbol);
+        return dailyOpen != null ? dailyOpen.getHigh() : null;
+    }
+
+    public Double getDayLow(String symbol) {
+        DailyOpen dailyOpen = dailyOpens.get(symbol);
+        return dailyOpen != null ? dailyOpen.getLow() : null;
     }
 }

@@ -35,6 +35,21 @@ public class AnalysisResponse {
     @Schema(description = "Сигнал: ПЕРЕКУПЛЕНА / ПЕРЕПРОДАНА / НЕЙТРАЛЬНО", example = "НЕЙТРАЛЬНО")
     private String signal;
 
+    @Schema(description = "Максимум дня", example = "1.11350")
+    private double dayHigh;
+
+    @Schema(description = "Минимум дня", example = "1.11100")
+    private double dayLow;
+
+    @Schema(description = "Тренд: ВОСХОДЯЩИЙ / НИСХОДЯЩИЙ / БОКОВОЙ", example = "БОКОВОЙ")
+    private String trend;
+
+    @Schema(description = "Ближайший уровень поддержки (ниже цены", example = "1.11000")
+    private Double nearestSupport;
+
+    @Schema(description = "Ближайший уровень сопротивления (выше цены", example = "1.11500")
+    private Double nearestResistance;
+
     public AnalysisResponse() {}
 
     public String getPair() { return pair; }
@@ -66,4 +81,19 @@ public class AnalysisResponse {
 
     public String getSignal() { return signal; }
     public void setSignal(String signal) { this.signal = signal; }
+
+    public double getDayHigh() { return dayHigh; }
+    public void setDayHigh(double dayHigh) { this.dayHigh = dayHigh; }
+
+    public double getDayLow() { return dayLow; }
+    public void setDayLow(double dayLow) { this.dayLow = dayLow; }
+
+    public String getTrend() { return trend; }
+    public void setTrend(String trend) { this.trend = trend; }
+
+    public Double getNearestSupport() { return nearestSupport; }
+    public void setNearestSupport(Double nearestSupport) { this.nearestSupport = nearestSupport; }
+
+    public Double getNearestResistance() { return nearestResistance; }
+    public void setNearestResistance(Double nearestResistance) { this.nearestResistance = nearestResistance; }
 }

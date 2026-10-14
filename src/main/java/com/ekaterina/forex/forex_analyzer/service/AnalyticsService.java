@@ -61,6 +61,32 @@ public class AnalyticsService {
         r.setChangePercent(round(changePercent, 2));
         r.setRsi(round(rsiValue, 2));
         r.setSignal(signalFromRsi(rsiValue));
+
+        // dayHigh / dayLow
+        Double dayHigh = tickCache.getDayHigh(symbol);
+        Double dayLow = tickCache.getDayLow(symbol);
+        r.setDayHigh(round(dayHigh != null ? dayHigh : lastCandle.getHigh().doubleValue(), 5));
+        r.setDayLow(round(dayLow != null ? dayLow : lastCandle.getLow().doubleValue(), 5));
+
+        // trend (по MA20 / MA50)
+        r.setTrend(calcTrend(candles));
+
+        // ближайшие уровни
+        List<LevelPoint> extremes = findLocalExtremes(candles);
+        List<LevelPoint> merged = mergeSimilar(extremes, 0.0015);
+
+        Double nearestSup = null;
+        Double nearestRes = null;
+        for (LevelPoint p : merged) {
+            if (p.price < livePrice) {
+                if (nearestSup == null || p.price > nearestSup) nearestSup = p.price;
+            } else if (p.price > livePrice) {
+                if (nearestRes == null || p.price < nearestRes) nearestRes = p.price;
+            }
+        }
+        r.setNearestSupport(nearestSup != null ? round(nearestSup, 5) : null);
+        r.setNearestResistance(nearestRes != null ? round(nearestRes, 5) : null);
+
         return r;
     }
 
@@ -201,5 +227,26 @@ public class AnalyticsService {
             this.price = price;
             this.time = time;
         }
+    }
+    private String calcTrend(List<Candle> candles) {
+        if (candles.size() < 50) return "НЕДОСТАТОЧНО ДАННЫХ";
+
+        double ma20 = calcMA(candles, 20);
+        double ma50 = calcMA(candles, 50);
+
+        double diffPercent = (ma20 - ma50) / ma50 * 100.0;
+
+        if (diffPercent > 0.1) return "ВОСХОДЯЩИЙ";
+        if (diffPercent < -0.1) return "НИСХОДЯЩИЙ";
+        return "БОКОВОЙ";
+    }
+
+    private double calcMA(List<Candle> candles, int period) {
+        int start = candles.size() - period;
+        double sum = 0;
+        for (int i = start; i < candles.size(); i++) {
+            sum += candles.get(i).getClose().doubleValue();
+        }
+        return sum / period;
     }
 }
