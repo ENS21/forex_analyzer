@@ -1,4 +1,4 @@
-package com.ekaterina.forex.forex_analyzer.service;
+package com.ekaterina.forex.forex_analyzer.dto;
 
 public class LevelDto {
     private final String type;      // "SUPPORT" или "RESISTANCE"

@@ -8,21 +8,17 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.Map;
-
 @RestController
 @RequestMapping("/api/analytics")
 @Tag(name = "Analytics", description = "Аналитика валютных пар: RSI, сигналы перекупленности/перепроданности")
 public class AnalyticsController {
     private final AnalyticsService analyticsService;
-
     @GetMapping(value = "/levels/{symbol}/{timeframe}", produces = "application/json;charset=UTF-8")
-    public Map<String, Object> getLevels(
+    public Object getLevels(
             @PathVariable String symbol,
             @PathVariable String timeframe) {
         return analyticsService.findLevels(symbol, timeframe);
     }
-
     public AnalyticsController(AnalyticsService analyticsService) {
         this.analyticsService = analyticsService;
     }
@@ -30,7 +26,7 @@ public class AnalyticsController {
     @GetMapping(value = "/{symbol}/{timeframe}", produces = "application/json;charset=UTF-8")
     @Operation(summary = "Анализ валютной пары",
     description = "Возвращает RSI, текущую цену и торговый сигнал для указанной пары и таймфрейма")
-    public Map<String, Object> getAnalytics(
+    public Object getAnalytics(
             @PathVariable String symbol,
             @PathVariable String timeframe) {
         return analyticsService.getRsiAnalysis(symbol, timeframe);
