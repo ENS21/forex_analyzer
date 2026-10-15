@@ -48,12 +48,15 @@ public class MT5TickSubscriber {
             int spaceIdx = message.indexOf(' ');
             if (spaceIdx < 0) return;
             String json = message.substring(spaceIdx + 1);
+
             JsonNode node = mapper.readTree(json);
             String symbol = node.get("symbol").asText();
             double bid = node.get("bid").asDouble();
             double ask = node.get("ask").asDouble();
             long timeUnix = node.get("time").asLong();
-            tickCache.update(symbol, bid, ask, timeUnix);
+            double dayOpen = node.has("dayOpen") ? node.get("dayOpen").asDouble() : 0.0;
+
+            tickCache.update(symbol, bid, ask, timeUnix, dayOpen);
             log.info("Тик от MT5: {}", message);
         } catch (Exception e) {
             log.error("Ошибка обработки тика: {}", message, e);

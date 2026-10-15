@@ -84,6 +84,20 @@ public class AnalyticsService {
                 if (nearestRes == null || p.price < nearestRes) nearestRes = p.price;
             }
         }
+        // Fallback: если support не найден — берём минимум за период
+        if (nearestSup == null) {
+            nearestSup = candles.stream()
+                    .mapToDouble(c -> c.getLow().doubleValue())
+                    .min()
+                    .orElse(livePrice);
+        }
+// Fallback: если resistance не найден — берём максимум за период
+        if (nearestRes == null) {
+            nearestRes = candles.stream()
+                    .mapToDouble(c -> c.getHigh().doubleValue())
+                    .max()
+                    .orElse(livePrice);
+        }
         r.setNearestSupport(nearestSup != null ? round(nearestSup, 5) : null);
         r.setNearestResistance(nearestRes != null ? round(nearestRes, 5) : null);
 

@@ -63,19 +63,32 @@ public class TickCache {
 
     // ===== Методы главного класса =====
 
-    public void update(String symbol, double bid, double ask, long timeUnix) {
+    public void update(String symbol, double bid, double ask, long timeUnix, double dayOpenFromMT5) {
+        // 1. Последний тик
         lastTicks.put(symbol, new Tick(bid, ask, timeUnix));
 
+        // 2. Дата
         LocalDate tickDate = Instant.ofEpochSecond(timeUnix)
                 .atZone(BROKER_ZONE)
                 .toLocalDate();
 
+        // 3. Открытие дня
         DailyOpen existing = dailyOpens.get(symbol);
+
         if (existing == null || !existing.getDate().equals(tickDate)) {
-            dailyOpens.put(symbol, new DailyOpen(bid, tickDate));
-            log.info("Открытие дня для {} = {} (дата {})", symbol, bid, tickDate);
+            // Новый день — сохраняем открытие
+            double openPrice = dayOpenFromMT5 > 0 ? dayOpenFromMT5 : bid;
+            dailyOpens.put(symbol, new DailyOpen(openPrice, tickDate));
+            log.info("Открытие дня для {} = {} (дата {})", symbol, openPrice, tickDate);
         } else {
+            // Тот же день — обновляем high/low
             existing.updateExtremes(bid);
+
+            // Если пришло более точное dayOpen — обновим (для случая перезапуска)
+            if (dayOpenFromMT5 > 0 && Math.abs(existing.getPrice() - dayOpenFromMT5) > 0.00001) {
+                dailyOpens.put(symbol, new DailyOpen(dayOpenFromMT5, tickDate));
+                log.info("Обновлено открытие дня для {} = {}", symbol, dayOpenFromMT5);
+            }
         }
     }
 
