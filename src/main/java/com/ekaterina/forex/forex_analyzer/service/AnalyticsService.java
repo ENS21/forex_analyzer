@@ -48,7 +48,8 @@ public class AnalyticsService {
         double livePrice = getLivePrice(symbol, lastCandle);
         double openPrice = getOpenPrice(symbol, lastCandle);
         double change = livePrice - openPrice;
-        double changePercent = (change / openPrice) * 100.0;
+        double changePercent = openPrice != 0 ? (change / openPrice) * 100.0 : 0.0;
+
 
         AnalysisResponse r = new AnalysisResponse();
         r.setPair(symbol);
@@ -152,16 +153,28 @@ public class AnalyticsService {
                 .withNumTypeOf(DoubleNum.class)
                 .build();
 
+        // Получаем правильную длительность для этого таймфрейма
+        Duration barDuration = getDurationForTimeframe(timeframe);
+
         for (Candle c : candles) {
+            if (c.getOpenTime() == null) continue; // Защита от битых данных
+
             ZonedDateTime endTime = c.getOpenTime().atZone(ZoneId.systemDefault());
+
+            // ЗАЩИТА ОТ ОШИБКИ TA4J:
+            // Если серия не пуста, проверяем, что время конца новой свечи строго больше предыдущей
+            if (!series.isEmpty() && !endTime.isAfter(series.getLastBar().getEndTime())) {
+                continue; // Пропускаем дубликат или свечу с нарушенным порядком
+            }
+
             series.addBar(new BaseBar(
-                    Duration.ofDays(1),
+                    barDuration, // <-- Используем вычисленную длительность
                     endTime,
                     c.getOpen().doubleValue(),
                     c.getHigh().doubleValue(),
                     c.getLow().doubleValue(),
                     c.getClose().doubleValue(),
-                    c.getVolume().doubleValue()
+                    c.getVolume() != null ? c.getVolume().doubleValue() : 0.0
             ));
         }
         return series;
@@ -185,7 +198,12 @@ public class AnalyticsService {
 
     private double getOpenPrice(String symbol, Candle lastCandle) {
         Double open = tickCache.getOpenPrice(symbol);
-        return open != null ? open : lastCandle.getOpen().doubleValue();
+        if (open != null && open > 0) {
+            return open;
+        }
+        // Fallback на open последней D1-свечи
+        double candleOpen = lastCandle.getOpen().doubleValue();
+        return candleOpen > 0 ? candleOpen : lastCandle.getClose().doubleValue();
     }
 
     private List<LevelPoint> findLocalExtremes(List<Candle> candles) {
@@ -248,6 +266,10 @@ public class AnalyticsService {
         double ma20 = calcMA(candles, 20);
         double ma50 = calcMA(candles, 50);
 
+        if (ma50 == 0.0) {
+            return "БОКОВОЙ";            //не помогло
+        }
+
         double diffPercent = (ma20 - ma50) / ma50 * 100.0;
 
         if (diffPercent > 0.1) return "ВОСХОДЯЩИЙ";
@@ -262,5 +284,25 @@ public class AnalyticsService {
             sum += candles.get(i).getClose().doubleValue();
         }
         return sum / period;
+    }
+
+    /**
+     * Возвращает длительность одного бара в зависимости от таймфрейма.
+     */
+    private Duration getDurationForTimeframe(String timeframe) {
+        if (timeframe == null) return Duration.ofDays(1);
+
+        return switch (timeframe.toUpperCase()) {
+            case "M1" -> Duration.ofMinutes(1);
+            case "M5" -> Duration.ofMinutes(5);
+            case "M15" -> Duration.ofMinutes(15);
+            case "M30" -> Duration.ofMinutes(30);
+            case "H1" -> Duration.ofHours(1);
+            case "H4" -> Duration.ofHours(4);
+            case "D1" -> Duration.ofDays(1);
+            case "W1" -> Duration.ofDays(7);
+            case "MN", "MN1" -> Duration.ofDays(30); // Примерно для месячного
+            default -> Duration.ofDays(1); // Значение по умолчанию, если пришел неизвестный таймфрейм
+        };
     }
 }
