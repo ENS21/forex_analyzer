@@ -15,15 +15,37 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import java.time.ZoneOffset;
-
+/**
+ * Компонент для получения данных о свечах в реальном времени от терминала MetaTrader 5.
+ * <p>
+ * Работает по протоколу ZeroMQ (сокет типа SUB). При запуске приложения
+ * создает фоновый поток (демон), который бесконечно слушает порт 5555
+ * и обрабатывает входящие JSON-сообщения, сохраняя их в базу данных.
+ * </p>
+ */
 @Component
 public class MT5CandleSubscriber {
     private static final Logger log = LoggerFactory.getLogger(MT5CandleSubscriber.class);
     private static final ObjectMapper mapper = new ObjectMapper();
     private final CandleRepository candleRepository;
+
+    /**
+     * Конструктор для внедрения зависимости репозитория.
+     *
+     * @param candleRepository Репозиторий для сохранения и обновления свечей в БД.
+     */
     public MT5CandleSubscriber(CandleRepository candleRepository) {
         this.candleRepository = candleRepository;
     }
+
+    /**
+     * Инициализирует и запускает фоновый поток для прослушивания ZeroMQ.
+     * <p>
+     * Аннотация {@link PostConstruct} гарантирует, что этот метод будет вызван
+     * автоматически сразу после создания бина Spring. Поток помечается как
+     * daemon, чтобы он завершился вместе с основным приложением.
+     * </p>
+     */
     @PostConstruct
     public void start() {
         Thread thread = new Thread(this::listen, "mt5-candle-subscriber");
@@ -31,6 +53,13 @@ public class MT5CandleSubscriber {
         thread.start();
     }
 
+    /**
+     * Основной цикл прослушивания сокета.
+     * <p>
+     * Подключается к локальному порту 5555, подписывается на топик "candle".
+     * Блокируется на методе {@code recvStr()}, ожидая новые сообщения.
+     * </p>
+     */
     private void listen() {
         try (ZContext context = new ZContext()) {
             ZMQ.Socket subscriber = context.createSocket(SocketType.SUB);
@@ -46,6 +75,17 @@ public class MT5CandleSubscriber {
             }
         }
     }
+    /**
+     * Обрабатывает одно входящее сообщение от MT5.
+     * <p>
+     * Метод разбирает строку (отсекая префикс топика), парсит JSON,
+     * извлекает данные о свече и выполняет операцию "Upsert" (Update or Insert):
+     * если свеча с таким временем уже есть в БД, она обновляется,
+     * иначе — создается новая.
+     * </p>
+     *
+     * @param message Сырая строка от MT5 в формате: "candle {json_data}"
+     */
 
     private void processMessage(String message) {
         try {

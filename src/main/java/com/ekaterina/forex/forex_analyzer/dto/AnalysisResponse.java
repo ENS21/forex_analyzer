@@ -1,6 +1,14 @@
 package com.ekaterina.forex.forex_analyzer.dto;
-
+import lombok.*;
 import io.swagger.v3.oas.annotations.media.Schema;
+/**
+ * Ответ API с результатами технического анализа валютной пары.
+ */
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 
 @Schema(description = "Аналитика по валютной паре: RSI, цена, изменение за день")
 public class AnalysisResponse {
@@ -49,51 +57,4 @@ public class AnalysisResponse {
 
     @Schema(description = "Ближайший уровень сопротивления (выше цены", example = "1.11500")
     private Double nearestResistance;
-
-    public AnalysisResponse() {}
-
-    public String getPair() { return pair; }
-    public void setPair(String pair) { this.pair = pair; }
-
-    public String getTimeframe() { return timeframe; }
-    public void setTimeframe(String timeframe) { this.timeframe = timeframe; }
-
-    public int getCandlesCount() { return candlesCount; }
-    public void setCandlesCount(int candlesCount) { this.candlesCount = candlesCount; }
-
-    public String getLastCandleTime() { return lastCandleTime; }
-    public void setLastCandleTime(String lastCandleTime) { this.lastCandleTime = lastCandleTime; }
-
-    public double getCurrentPrice() { return currentPrice; }
-    public void setCurrentPrice(double currentPrice) { this.currentPrice = currentPrice; }
-
-    public double getOpenPrice() { return openPrice; }
-    public void setOpenPrice(double openPrice) { this.openPrice = openPrice; }
-
-    public double getChange() { return change; }
-    public void setChange(double change) { this.change = change; }
-
-    public double getChangePercent() { return changePercent; }
-    public void setChangePercent(double changePercent) { this.changePercent = changePercent; }
-
-    public double getRsi() { return rsi; }
-    public void setRsi(double rsi) { this.rsi = rsi; }
-
-    public String getSignal() { return signal; }
-    public void setSignal(String signal) { this.signal = signal; }
-
-    public double getDayHigh() { return dayHigh; }
-    public void setDayHigh(double dayHigh) { this.dayHigh = dayHigh; }
-
-    public double getDayLow() { return dayLow; }
-    public void setDayLow(double dayLow) { this.dayLow = dayLow; }
-
-    public String getTrend() { return trend; }
-    public void setTrend(String trend) { this.trend = trend; }
-
-    public Double getNearestSupport() { return nearestSupport; }
-    public void setNearestSupport(Double nearestSupport) { this.nearestSupport = nearestSupport; }
-
-    public Double getNearestResistance() { return nearestResistance; }
-    public void setNearestResistance(Double nearestResistance) { this.nearestResistance = nearestResistance; }
 }

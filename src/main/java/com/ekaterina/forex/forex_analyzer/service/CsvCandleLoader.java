@@ -16,14 +16,42 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Сервис для первичной инициализации базы данных историческими данными.
+ * <p>
+ * Реализует интерфейс {@link CommandLineRunner}, благодаря чему метод {@code run()}
+ * автоматически выполняется один раз при запуске Spring Boot приложения.
+ * Читает CSV-файл, парсит его и сохраняет свечи в БД (если база пуста).
+ * </p>
+ */
 @Service
 public class CsvCandleLoader implements CommandLineRunner {
 
     private final CandleRepository candleRepository;
 
+    /**
+     * Конструктор для внедрения зависимости репозитория.
+     *
+     * @param candleRepository Репозиторий для сохранения свечей.
+     */
     public CsvCandleLoader(CandleRepository candleRepository) {
         this.candleRepository = candleRepository;
     }
+
+    /**
+     * Основной метод, выполняющийся при старте приложения.
+     * <p>
+     * Алгоритм работы:
+     * <ol>
+     *     <li>Проверяет наличие CSV-файла по указанному пути.</li>
+     *     <li>Проверяет, есть ли уже данные в базе (если есть — загрузка пропускается).</li>
+     *     <li>Читает файл, парсит строки и сохраняет новые свечи в базу данных.</li>
+     * </ol>
+     * </p>
+     *
+     * @param args Аргументы командной строки (не используются в данной реализации).
+     * @throws Exception Если возникают ошибки при чтении файла или записи в БД.
+     */
 
     @Override
     public void run(String... args) throws Exception {

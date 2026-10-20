@@ -10,16 +10,37 @@ import org.zeromq.SocketType;
 import org.zeromq.ZContext;
 import org.zeromq.ZMQ;
 
+/**
+ * Компонент для получения тиков (bid/ask) в реальном времени от терминала MetaTrader 5.
+ * <p>
+ * Работает по протоколу ZeroMQ (сокет типа SUB). При запуске приложения
+ * создает фоновый поток (демон), который бесконечно слушает порт 5555
+ * и передает входящие данные в {@link TickCache}.
+ * </p>
+ */
 @Component
 public class MT5TickSubscriber {
     private static final Logger log = LoggerFactory.getLogger(MT5TickSubscriber.class);
     private static final ObjectMapper mapper = new ObjectMapper();
     private final TickCache tickCache;
 
+    /**
+     * Конструктор для внедрения зависимости кэша тиков.
+     *
+     * @param tickCache Кэш для сохранения актуальных рыночных данных.
+     */
     public MT5TickSubscriber(TickCache tickCache) {
         this.tickCache = tickCache;
     }
 
+    /**
+     * Инициализирует и запускает фоновый поток для прослушивания ZeroMQ.
+     * <p>
+     * Аннотация {@link PostConstruct} гарантирует, что этот метод будет вызван
+     * автоматически сразу после создания бина Spring. Поток помечается как
+     * daemon, чтобы он завершился вместе с основным приложением.
+     * </p>
+     */
     @PostConstruct
     public void start() {
         Thread thread = new Thread(this::listen, "mt5-tick-subscriber");
@@ -27,6 +48,14 @@ public class MT5TickSubscriber {
         thread.start();
     }
 
+    /**
+     * Основной цикл прослушивания сокета.
+     * <p>
+     * Подключается к локальному порту 5555, подписывается на топик "tick".
+     * Блокируется на методе {@code recvStr()}, ожидая новые сообщения,
+     * и передает их на обработку в {@code processMessage()}.
+     * </p>
+     */
     private void listen() {
         try (ZContext context = new ZContext()) {
             ZMQ.Socket subscriber = context.createSocket(SocketType.SUB);
@@ -43,6 +72,7 @@ public class MT5TickSubscriber {
         }
     }
 
+    /** Парсит JSON тика и обновляет TickCache. */
     private void processMessage(String message) {
         try {
             int spaceIdx = message.indexOf(' ');
@@ -55,9 +85,14 @@ public class MT5TickSubscriber {
             double ask = node.get("ask").asDouble();
             long timeUnix = node.get("time").asLong();
             double dayOpen = node.has("dayOpen") ? node.get("dayOpen").asDouble() : 0.0;
+            // Безопасно достаем RSI (если поля нет, будет null)
+            Double rsiD1 = node.has("rsiD1") ? node.get("rsiD1").asDouble() : null;
+            Double rsiH4 = node.has("rsiH4") ? node.get("rsiH4").asDouble() : null;
 
-            tickCache.update(symbol, bid, ask, timeUnix, dayOpen);
+            // Передаем новые параметры в кэш
+            tickCache.update(symbol, bid, ask, timeUnix, dayOpen, rsiD1, rsiH4);
             log.info("Тик от MT5: {}", message);
+
         } catch (Exception e) {
             log.error("Ошибка обработки тика: {}", message, e);
         }

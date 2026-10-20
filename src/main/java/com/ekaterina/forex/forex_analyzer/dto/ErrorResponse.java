@@ -1,22 +1,23 @@
 package com.ekaterina.forex.forex_analyzer.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+import lombok.*;
+/**
+ * Стандартный DTO для возврата информации об ошибке клиенту.
+ * Используется, когда запрошенные данные не могут быть обработаны (например, не хватает свечей).
+ */
+@Getter
+@Setter
+@AllArgsConstructor
+@Builder
+@NoArgsConstructor
+@Schema(description = "Ответ API в случае возникновения ошибки")
+
 public class ErrorResponse {
 
+    @Schema(description = "Текст ошибки", example = "Недостаточно свечей для расчёта RSI")
     private String error;
+
+    @Schema(description = "Количество доступных данных (например, свечей", example = "10")
     private Integer count;
-
-    public ErrorResponse(String error) {
-        this.error = error;
-    }
-
-    public ErrorResponse(String error, Integer count) {
-        this.error = error;
-        this.count = count;
-    }
-
-    public String getError() { return error; }
-    public void setError(String error) { this.error = error; }
-
-    public Integer getCount() { return count; }
-    public void setCount(Integer count) { this.count = count; }
 }
