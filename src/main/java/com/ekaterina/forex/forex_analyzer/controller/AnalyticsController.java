@@ -1,6 +1,7 @@
 package com.ekaterina.forex.forex_analyzer.controller;
 
 import com.ekaterina.forex.forex_analyzer.service.AnalyticsService;
+import com.ekaterina.forex.forex_analyzer.service.MaxNotificationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -19,12 +20,15 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Analytics", description = "Аналитика валютных пар: RSI, сигналы перекупленности/перепроданности")
 public class AnalyticsController {
     private final AnalyticsService analyticsService;
+    private final MaxNotificationService maxNotificationService;
+
     /**
      * Конструктор для внедрения сервиса аналитики.
      * @param analyticsService Сервис, содержащий бизнес-логику.
      */
-    public AnalyticsController(AnalyticsService analyticsService) {
+    public AnalyticsController(AnalyticsService analyticsService, MaxNotificationService maxNotificationService) {
         this.analyticsService = analyticsService;
+        this.maxNotificationService = maxNotificationService;
     }
     /**
      * Эндпоинт для получения уровней поддержки и сопротивления.
@@ -61,4 +65,15 @@ public class AnalyticsController {
             @Parameter(description = "Таймфрейм, например D1 или H4" ) @PathVariable String timeframe) {
         return analyticsService.getRsiAnalysis(symbol, timeframe);
     }
+
+
+
+
+
+@GetMapping("/test-max")
+    public String testMax() {
+        maxNotificationService.sendSignal("🟢 Тестовое сообщение из Forex Analyzer! Всё работает.");
+        return "Запрос на отправку сообщения отправлен. Проверьте MAX.";
+    }
+
 }
