@@ -23,13 +23,15 @@ public class MT5TickSubscriber {
     private static final Logger log = LoggerFactory.getLogger(MT5TickSubscriber.class);
     private static final ObjectMapper mapper = new ObjectMapper();
     private final TickCache tickCache;
+    private final AlertService alertService;
 
     /**
      * Конструктор для внедрения зависимости кэша тиков.
      *
      * @param tickCache Кэш для сохранения актуальных рыночных данных.
      */
-    public MT5TickSubscriber(TickCache tickCache) {
+    public MT5TickSubscriber(TickCache tickCache, AlertService alertService) {
+        this.alertService = alertService;
         this.tickCache = tickCache;
     }
 
@@ -85,13 +87,17 @@ public class MT5TickSubscriber {
             double ask = node.get("ask").asDouble();
             long timeUnix = node.get("time").asLong();
             double dayOpen = node.has("dayOpen") ? node.get("dayOpen").asDouble() : 0.0;
-            // Безопасно достаем RSI (если поля нет, будет null)
+
+            // Извлекаем RSI для всех трех таймфреймов (безопасно, если их нет — будет null)
             Double rsiD1 = node.has("rsiD1") ? node.get("rsiD1").asDouble() : null;
             Double rsiH4 = node.has("rsiH4") ? node.get("rsiH4").asDouble() : null;
+            Double rsiH1 = node.has("rsiH1") ? node.get("rsiH1").asDouble() : null; // НОВОЕ
 
-            // Передаем новые параметры в кэш
-            tickCache.update(symbol, bid, ask, timeUnix, dayOpen, rsiD1, rsiH4);
-            log.info("Тик от MT5: {}", message);
+            // Передаем данные в кэш (добавили rsiH1)
+            tickCache.update(symbol, bid, ask, timeUnix, dayOpen, rsiD1, rsiH4, rsiH1);
+
+            // Проверяем, не пора ли отправить сигнал в MAX
+            alertService.checkAndSendSignals(symbol);
 
         } catch (Exception e) {
             log.error("Ошибка обработки тика: {}", message, e);

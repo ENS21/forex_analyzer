@@ -81,6 +81,8 @@ public class AnalyticsService {
                 realTimeRsi = lastTick.getRsiD1();
             } else if ("H4".equalsIgnoreCase(timeframe)) {
                 realTimeRsi = lastTick.getRsiH4();
+            } else if ("H1".equalsIgnoreCase(timeframe)) {
+                realTimeRsi = lastTick.getRsiH1();
             }
         }
         // Если real-time RSI пришел и он больше 0, берем его. Иначе считаем сами.

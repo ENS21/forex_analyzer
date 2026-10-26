@@ -24,28 +24,55 @@ public class TickCache {
     /**
      * Неизменяемый объект, представляющий собой один тик (снимок цен bid/ask).
      */
+    // Вложенный класс Tick (добавили rsiH1)
     public static class Tick {
         private final double bid;
         private final double ask;
         private final long time;
         private final Double rsiD1;
         private final Double rsiH4;
+        private final Double rsiH1; // <--- ДОБАВИЛИ ПОЛЕ
 
-        public Tick(double bid, double ask, long time, Double rsiD1, Double rsiH4) {
+        // Конструктор теперь принимает 6 параметров
+        public Tick(double bid, double ask, long time, Double rsiD1, Double rsiH4, Double rsiH1) {
             this.bid = bid;
             this.ask = ask;
             this.time = time;
             this.rsiD1 = rsiD1;
             this.rsiH4 = rsiH4;
+            this.rsiH1 = rsiH1;
         }
 
         public double getBid() { return bid; }
         public double getAsk() { return ask; }
         public long getTime() { return time; }
-
         public Double getRsiD1() { return rsiD1; }
-
         public Double getRsiH4() { return rsiH4; }
+        public Double getRsiH1() { return rsiH1; } // <--- ДОБАВИЛИ ГЕТТЕР
+    }
+
+    // Метод update (добавили параметр rsiH1)
+    public void update(String symbol, double bid, double ask, long timeUnix, double dayOpenFromMT5, Double rsiD1, Double rsiH4, Double rsiH1) {
+        // Передаем rsiH1 в конструктор Tick
+        lastTicks.put(symbol, new Tick(bid, ask, timeUnix, rsiD1, rsiH4, rsiH1));
+
+        LocalDate tickDate = Instant.ofEpochSecond(timeUnix)
+                .atZone(BROKER_ZONE)
+                .toLocalDate();
+
+        DailyOpen existing = dailyOpens.get(symbol);
+
+        if (existing == null || !existing.getDate().equals(tickDate)) {
+            double openPrice = dayOpenFromMT5 > 0 ? dayOpenFromMT5 : bid;
+            dailyOpens.put(symbol, new DailyOpen(openPrice, tickDate));
+            log.info("Открытие дня для {} = {} (дата {})", symbol, openPrice, tickDate);
+        } else {
+            existing.updateExtremes(bid);
+            if (dayOpenFromMT5 > 0 && Math.abs(existing.getPrice() - dayOpenFromMT5) > 0.00001) {
+                dailyOpens.put(symbol, new DailyOpen(dayOpenFromMT5, tickDate));
+                log.info("Обновлено открытие дня для {} = {}", symbol, dayOpenFromMT5);
+            }
+        }
     }
 
     // ===== Вложенный класс: открытие дня =====
@@ -96,9 +123,9 @@ public class TickCache {
      * @param timeUnix      Время тика в формате Unix Timestamp (секунды).
      * @param dayOpenFromMT5 Цена открытия дня, переданная от терминала MT5 (0, если неизвестна).
      */
-    public void update(String symbol, double bid, double ask, long timeUnix, double dayOpenFromMT5, Double rsiD1, Double rsiH4) {
+    /**public void update(String symbol, double bid, double ask, long timeUnix, double dayOpenFromMT5, Double rsiD1, Double rsiH4, Double rsiH1) {
         // 1. Последний тик
-        lastTicks.put(symbol, new Tick(bid, ask, timeUnix, rsiD1, rsiH4));
+        lastTicks.put(symbol, new Tick(bid, ask, timeUnix, rsiD1, rsiH4, rsiH1));
 
         // 2. Дата
         LocalDate tickDate = Instant.ofEpochSecond(timeUnix)
@@ -123,7 +150,7 @@ public class TickCache {
                 log.info("Обновлено открытие дня для {} = {}", symbol, dayOpenFromMT5);
             }
         }
-    }
+    }*/
 
     /**
      * Возвращает последний полученный тик для указанного инструмента.
