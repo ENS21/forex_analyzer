@@ -91,7 +91,7 @@ public class MT5TickSubscriber {
             // Извлекаем RSI для всех трех таймфреймов (безопасно, если их нет — будет null)
             Double rsiD1 = node.has("rsiD1") ? node.get("rsiD1").asDouble() : null;
             Double rsiH4 = node.has("rsiH4") ? node.get("rsiH4").asDouble() : null;
-            Double rsiH1 = node.has("rsiH1") ? node.get("rsiH1").asDouble() : null; // НОВОЕ
+            Double rsiH1 = node.has("rsiH1") ? node.get("rsiH1").asDouble() : null;
 
             // Передаем данные в кэш (добавили rsiH1)
             tickCache.update(symbol, bid, ask, timeUnix, dayOpen, rsiD1, rsiH4, rsiH1);

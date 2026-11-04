@@ -20,11 +20,12 @@ public class TickCache {
     private static final Logger log = LoggerFactory.getLogger(TickCache.class);
     // Часовой пояс сервера брокера
     private static final ZoneId BROKER_ZONE = ZoneOffset.ofHours(3);
+
     // ===== Вложенный класс: последний тик =====
     /**
      * Неизменяемый объект, представляющий собой один тик (снимок цен bid/ask).
      */
-    // Вложенный класс Tick (добавили rsiH1)
+
     public static class Tick {
         private final double bid;
         private final double ask;
@@ -33,7 +34,7 @@ public class TickCache {
         private final Double rsiH4;
         private final Double rsiH1; // <--- ДОБАВИЛИ ПОЛЕ
 
-        // Конструктор теперь принимает 6 параметров
+
         public Tick(double bid, double ask, long time, Double rsiD1, Double rsiH4, Double rsiH1) {
             this.bid = bid;
             this.ask = ask;
@@ -48,8 +49,25 @@ public class TickCache {
         public long getTime() { return time; }
         public Double getRsiD1() { return rsiD1; }
         public Double getRsiH4() { return rsiH4; }
-        public Double getRsiH1() { return rsiH1; } // <--- ДОБАВИЛИ ГЕТТЕР
+        public Double getRsiH1() { return rsiH1; }
     }
+
+    // ===== Поля главного класса =====
+    private final Map<String, Tick> lastTicks = new ConcurrentHashMap<>();
+    private final Map<String, DailyOpen> dailyOpens = new ConcurrentHashMap<>();
+
+    // ===== Методы главного класса =====
+    /**
+     * Обновляет кэш новыми данными о тике.
+     * Метод автоматически определяет, наступил ли новый торговый день (согласно часовому поясу брокера),
+     * и сбрасывает статистику дня при необходимости.
+     *
+     * @param symbol        Название инструмента (например, "EURUSD").
+     * @param bid           Текущая цена Bid.
+     * @param ask           Текущая цена Ask.
+     * @param timeUnix      Время тика в формате Unix Timestamp (секунды).
+     * @param dayOpenFromMT5 Цена открытия дня, переданная от терминала MT5 (0, если неизвестна).
+     */
 
     // Метод update (добавили параметр rsiH1)
     public void update(String symbol, double bid, double ask, long timeUnix, double dayOpenFromMT5, Double rsiD1, Double rsiH4, Double rsiH1) {
@@ -106,52 +124,6 @@ public class TickCache {
             if (bid < low) low = bid;
         }
     }
-
-    // ===== Поля главного класса =====
-    private final Map<String, Tick> lastTicks = new ConcurrentHashMap<>();
-    private final Map<String, DailyOpen> dailyOpens = new ConcurrentHashMap<>();
-
-    // ===== Методы главного класса =====
-    /**
-     * Обновляет кэш новыми данными о тике.
-     * Метод автоматически определяет, наступил ли новый торговый день (согласно часовому поясу брокера),
-     * и сбрасывает статистику дня при необходимости.
-     *
-     * @param symbol        Название инструмента (например, "EURUSD").
-     * @param bid           Текущая цена Bid.
-     * @param ask           Текущая цена Ask.
-     * @param timeUnix      Время тика в формате Unix Timestamp (секунды).
-     * @param dayOpenFromMT5 Цена открытия дня, переданная от терминала MT5 (0, если неизвестна).
-     */
-    /**public void update(String symbol, double bid, double ask, long timeUnix, double dayOpenFromMT5, Double rsiD1, Double rsiH4, Double rsiH1) {
-        // 1. Последний тик
-        lastTicks.put(symbol, new Tick(bid, ask, timeUnix, rsiD1, rsiH4, rsiH1));
-
-        // 2. Дата
-        LocalDate tickDate = Instant.ofEpochSecond(timeUnix)
-                .atZone(BROKER_ZONE)
-                .toLocalDate();
-
-        // 3. Открытие дня
-        DailyOpen existing = dailyOpens.get(symbol);
-
-        if (existing == null || !existing.getDate().equals(tickDate)) {
-            // Новый день — сохраняем открытие
-            double openPrice = dayOpenFromMT5 > 0 ? dayOpenFromMT5 : bid;
-            dailyOpens.put(symbol, new DailyOpen(openPrice, tickDate));
-            log.info("Открытие дня для {} = {} (дата {})", symbol, openPrice, tickDate);
-        } else {
-            // Тот же день — обновляем high/low
-            existing.updateExtremes(bid);
-
-            // Если пришло более точное dayOpen — обновим (для случая перезапуска)
-            if (dayOpenFromMT5 > 0 && Math.abs(existing.getPrice() - dayOpenFromMT5) > 0.00001) {
-                dailyOpens.put(symbol, new DailyOpen(dayOpenFromMT5, tickDate));
-                log.info("Обновлено открытие дня для {} = {}", symbol, dayOpenFromMT5);
-            }
-        }
-    }*/
-
     /**
      * Возвращает последний полученный тик для указанного инструмента.
      * @param symbol Название инструмента.

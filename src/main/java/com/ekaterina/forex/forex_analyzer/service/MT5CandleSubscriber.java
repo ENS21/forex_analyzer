@@ -28,14 +28,17 @@ public class MT5CandleSubscriber {
     private static final Logger log = LoggerFactory.getLogger(MT5CandleSubscriber.class);
     private static final ObjectMapper mapper = new ObjectMapper();
     private final CandleRepository candleRepository;
+    private final CandleCloseService candleCloseService;
+
 
     /**
      * Конструктор для внедрения зависимости репозитория.
      *
      * @param candleRepository Репозиторий для сохранения и обновления свечей в БД.
      */
-    public MT5CandleSubscriber(CandleRepository candleRepository) {
+    public MT5CandleSubscriber(CandleRepository candleRepository, CandleCloseService candleCloseService) {
         this.candleRepository = candleRepository;
+        this.candleCloseService = candleCloseService;
     }
 
     /**
@@ -112,16 +115,22 @@ public class MT5CandleSubscriber {
             Optional<Candle> existing = candleRepository
                     .findBySymbolAndTimeframeAndOpenTime(symbol, timeframe, openTime);
 
+            //
+            // ВОТ ЗДЕСЬ МЫ ОПРЕДЕЛЯЕМ, НОВАЯ ЛИ ЭТО СВЕЧА
+            boolean isNewCandle = existing.isEmpty();
+
             Candle candle;
-            if (existing.isPresent()) {
+            if (!isNewCandle) {
+                // Свеча уже есть, просто обновляем её (она еще формируется)
                 candle = existing.get();
                 candle.setOpen(open);
                 candle.setHigh(high);
                 candle.setLow(low);
                 candle.setClose(close);
                 candle.setVolume(volume);
-                log.info("Обновлена свеча {} {} {}", symbol, timeframe, openTime);
+                log.debug("Обновлена свеча {} {} {}", symbol, timeframe, openTime); // Поставил debug, чтобы не спамило
             } else {
+                // Свечи нет — значит началась НОВАЯ свеча, а предыдущая ЗАКРЫЛАСЬ
                 candle = new Candle();
                 candle.setSymbol(symbol);
                 candle.setTimeframe(timeframe);
@@ -131,10 +140,15 @@ public class MT5CandleSubscriber {
                 candle.setLow(low);
                 candle.setClose(close);
                 candle.setVolume(volume);
-                log.info("Добавлена новая свеча {} {} {}", symbol, timeframe, openTime);
+                log.info("Добавлена новая (закрытая) свеча {} {} {}", symbol, timeframe, openTime);
             }
 
             candleRepository.save(candle);
+
+            // Если свеча новая — значит предыдущая закрылась, запускаем триггер!
+            if (isNewCandle) {
+                candleCloseService.onCandleClosed(symbol, timeframe);
+            }
 
         } catch (Exception e) {
             log.error("Ошибка обработки свечи: {}", message, e);
