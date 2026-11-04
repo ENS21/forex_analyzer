@@ -414,7 +414,7 @@ public class AnalyticsService {
      * @param candles Список свечей (от старых к новым).
      * @return Строка с описанием тренда: "ВОСХОДЯЩИЙ", "НИСХОДЯЩИЙ", "БОКОВОЙ" или "НЕДОСТАТОЧНО ДАННЫХ".
      */
-    private String calcTrend(List<Candle> candles) {
+    public String calcTrend(List<Candle> candles) {
         if (candles.size() < 50) return "НЕДОСТАТОЧНО ДАННЫХ";
 
         double ma20 = calcMA(candles, 20);

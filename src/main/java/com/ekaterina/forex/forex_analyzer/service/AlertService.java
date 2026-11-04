@@ -24,8 +24,8 @@ public class AlertService {
     private final Map<String, Integer> lastOverboughtLevel = new ConcurrentHashMap<>();
 
     // Наши пороги для срабатывания
-    private static final int[] OVERSOLD_LEVELS = {30, 25, 20, 15};
-    private static final int[] OVERBOUGHT_LEVELS = {70, 75, 80, 85};
+    private static final int[] OVERSOLD_LEVELS = {30, 25, 20, 15, 10, 5};
+    private static final int[] OVERBOUGHT_LEVELS = {70, 75, 80, 85, 90, 95};
 
     public AlertService(TickCache tickCache, MaxNotificationService maxNotificationService) {
         this.tickCache = tickCache;
@@ -48,7 +48,7 @@ public class AlertService {
         String key = symbol + "_" + timeframe;
 
         // --- ЛОГИКА ДЛЯ ПЕРЕПРОДАННОСТИ (Ниже 30) ---
-        if (rsi <= 30) {
+        if (rsi < 30) {
             int lastLevel = lastOversoldLevel.getOrDefault(key, 0);
             int crossedLevel = 0;
 
@@ -66,12 +66,12 @@ public class AlertService {
             }
         }
         // Если RSI вернулся выше 30, сбрасываем память, чтобы в следующий раз снова слать сигналы
-        else {
+        else if (rsi >35) {
             lastOversoldLevel.put(key, 0);
         }
 
         // --- ЛОГИКА ДЛЯ ПЕРЕКУПЛЕННОСТИ (Выше 70) ---
-        if (rsi >= 70) {
+        if (rsi > 70) {
             int lastLevel = lastOverboughtLevel.getOrDefault(key, 0);
             int crossedLevel = 0;
 
@@ -85,7 +85,7 @@ public class AlertService {
                 sendAlertMessage(symbol, timeframe, rsi, currentPrice, "ПЕРЕКУПЛЕНА", crossedLevel);
                 lastOverboughtLevel.put(key, crossedLevel);
             }
-        } else {
+        } else if (rsi < 65) {
             lastOverboughtLevel.put(key, 0);
         }
     }
