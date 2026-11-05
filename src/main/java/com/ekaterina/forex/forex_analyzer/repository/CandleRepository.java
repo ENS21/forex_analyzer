@@ -5,7 +5,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import java.time.LocalDateTime;
 import java.util.Optional;
-
 import java.util.List;
 
 /**
@@ -48,4 +47,11 @@ public interface CandleRepository extends JpaRepository<Candle, Long> {
      * @return {@link Optional} с найденной свечой, или пустой Optional, если такой свечи нет.
      */
     Optional<Candle> findBySymbolAndTimeframeAndOpenTime(String symbol, String timeframe, LocalDateTime openTime);
+
+    /** Найти все свечи за определенный период (например, с 1 января по 31 декабря)
+     * Метод для расчета статистики, например найти АТР по валютной паре за год
+     * */
+    List<Candle> findBySymbolAndTimeframeAndOpenTimeBetweenOrderByOpenTimeAsc(
+            String symbol, String timeframe, LocalDateTime start, LocalDateTime end
+    );
 }
