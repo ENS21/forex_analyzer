@@ -76,4 +76,16 @@ public class AtrService {
         // 5. Возвращаем результат
         return new AtrResult(averageAtr, minAtr, maxAtr, count);
     }
+    public Double calculateTodayAtrProgress(String symbol, TickCache tickCache) {
+        AtrResult atrResult = calculateMonthlyAtr(symbol);
+        if (atrResult == null || atrResult.averageAtr() == 0) return null;
+
+        Double dayHigh = tickCache.getDayHigh(symbol);
+        Double dayLow = tickCache.getDayLow(symbol);
+
+        if (dayHigh == null || dayLow == null) return null;
+
+        double todayRange = dayHigh - dayLow;
+        return (todayRange / atrResult.averageAtr()) * 100.0;
+    }
 }

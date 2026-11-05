@@ -8,6 +8,8 @@ import org.springframework.stereotype.Service;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class CandleCloseService {
@@ -19,34 +21,62 @@ public class CandleCloseService {
     private final TrendService trendService;
     private final MaxNotificationService maxNotificationService;
 
+    // ДОБАВИЛИ НОВЫЕ СЕРВИСЫ ДЛЯ ATR
+    private final AtrService atrService;
+    private final TickCache tickCache;
+
+    // Чтобы не спамить предупреждением об ATR, запоминаем, кому мы уже отправили его сегодня
+    private final Map<String, Boolean> atrWarningSentToday = new ConcurrentHashMap<>();
+
     public CandleCloseService(AnalyticsService analyticsService,
                               CandleRepository candleRepository,
                               TrendService trendService,
-                              MaxNotificationService maxNotificationService) {
+                              MaxNotificationService maxNotificationService,
+                              AtrService atrService,   // ДОБАВИЛИ В КОНСТРУКТОР
+                              TickCache tickCache) {   // ДОБАВИЛИ В КОНСТРУКТОР
         this.analyticsService = analyticsService;
         this.candleRepository = candleRepository;
         this.trendService = trendService;
         this.maxNotificationService = maxNotificationService;
+        this.atrService = atrService;
+        this.tickCache = tickCache;
     }
 
     public void onCandleClosed(String symbol, String timeframe) {
+
+        // =========================================================================
+        // ЛОГИКА 1: ПРОВЕРКА ATR (Рынок прошел 70% от среднего ATR)
+        // =========================================================================
+        Double progress = atrService.calculateTodayAtrProgress(symbol, tickCache);
+
+        if (progress != null && progress >= 70.0) {
+            if (!atrWarningSentToday.getOrDefault(symbol, false)) {
+                String warningMessage = String.format(
+                        "⚠️ **ВНИМАНИЕ! ОТРАБОТКА ATR** ⚠️\n\n" +
+                                "Пара: %s\n" +
+                                "Цена уже прошла **%.1f%%** от среднего дневного ATR (за 22 дня).\n\n" +
+                                "Высокая вероятность консолидации. Будьте осторожны с новыми входами!",
+                        symbol, progress
+                );
+                maxNotificationService.sendSignal(warningMessage);
+                atrWarningSentToday.put(symbol, true);
+                log.info("Отправлено предупреждение об ATR для {} (пройдено {}%)", symbol, progress);
+            }
+        }
+
+        // =========================================================================
+        // ЛОГИКА 2: СМЕНА ТРЕНДА (твой старый код)
+        // =========================================================================
         List<Candle> candles = candleRepository.findTop100BySymbolAndTimeframeOrderByOpenTimeDesc(symbol, timeframe);
         if (candles.size() < 50) return;
 
         Collections.reverse(candles);
 
-        // 1. Считаем новый тренд
         String newTrend = analyticsService.calcTrend(candles);
-
-        // 2. Смотрим, какой тренд был в памяти
         String oldTrend = trendService.getTrend(symbol, timeframe);
 
-        // 3. ЛОГИКА ОТПРАВКИ:
         if (oldTrend == null) {
-            // ПЕРВЫЙ ЗАПУСК: Тренда в памяти нет. Запоминаем его, но НЕ пишем "Смена тренда".
-            // Шлем одно сообщение, чтобы ты поняла, что программа работает.
             trendService.updateTrend(symbol, timeframe, newTrend);
-
             String message = String.format(
                     "🤖 **Forex Analyzer Запущен**\n\n" +
                             "Первый расчет тренда:\n" +
@@ -60,9 +90,7 @@ public class CandleCloseService {
             log.info("Первичная установка тренда {} {}: {}", symbol, timeframe, newTrend);
 
         } else if (!oldTrend.equals(newTrend)) {
-            // ТРЕНД ИЗМЕНИЛСЯ (был один, стал другой)
             trendService.updateTrend(symbol, timeframe, newTrend);
-
             String message = String.format(
                     "🚨 **СМЕНА ТРЕНДА!** 🚨\n\n" +
                             "Пара: %s\n" +
@@ -75,7 +103,6 @@ public class CandleCloseService {
             log.info("Смена тренда {} {}: {} -> {}", symbol, timeframe, oldTrend, newTrend);
 
         } else {
-            // ТРЕНД НЕ ИЗМЕНИЛСЯ: ничего не шлем, просто пишем в логи IDEA
             log.debug("Свеча {} {} закрылась. Тренд остался прежним: {}", symbol, timeframe, newTrend);
         }
     }
