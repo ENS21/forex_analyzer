@@ -96,12 +96,12 @@ public class AlertService {
 
         // Формируем красивое сообщение с указанием конкретного пробитого уровня
         String message = String.format(
-                "🚨 **ВНИМАНИЕ!** 🚨\n\n" +
+                "🚨 ВНИМАНИЕ! 🚨\n\n" +
                         "%s %s на %s\n" +
-                        "📉 RSI опустился %s %d и сейчас равен: **%.1f**\n" +
+                        "📉 RSI %s %d и сейчас равен: **%.1f**\n" +
                         "💵 Цена: %.5f\n\n" +
-                        "⚠️ Возможна сильная реакция цены.\n" +
-                        "🤖 Forex Ana lyzer",
+
+                        "🤖 Forex Analyzer",
                 emoji, symbol, timeframe, action, level, rsi, price
         );
 

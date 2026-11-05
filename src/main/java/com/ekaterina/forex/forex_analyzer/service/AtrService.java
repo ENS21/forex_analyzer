@@ -8,9 +8,7 @@ import java.util.List;
 
 @Service
 public class AtrService {
-
     private final CandleRepository candleRepository;
-
     public AtrService(CandleRepository candleRepository) {
         this.candleRepository = candleRepository;
     }
